@@ -115,11 +115,12 @@ export default function Dashboard() {
           />
           <Route
             path='/dashboard/apps'
-            component={Apps}
-          />
-          <Route
-            path='/dashboard/app-catalog'
             component={AppCatalog}
+          />
+          <Redirect from='/dashboard/app-catalog' to='/dashboard/apps' />
+          <Route
+            path='/dashboard/recent-apps'
+            component={Apps}
           />
           <Route
             path='/dashboard/app' // Consider if this needs /:app parameter

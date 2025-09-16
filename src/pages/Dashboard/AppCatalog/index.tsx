@@ -16,6 +16,7 @@ import { makeStyles } from '@mui/styles'
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
+import HistoryIcon from '@mui/icons-material/History'
 import CloseIcon from '@mui/icons-material/Close'
 import Fuse from 'fuse.js'
 import { useHistory } from 'react-router-dom'
@@ -129,7 +130,7 @@ const AppCatalog: React.FC = () => {
 
   // Handle back navigation from catalog to apps page
   const handleBackToApps = () => {
-    history.push('/dashboard/apps')
+    history.push('/dashboard/recent-apps')
   }
 
   const handleNavigateToApp = () => {
@@ -161,8 +162,12 @@ const AppCatalog: React.FC = () => {
               openUrl('https://metanetapps.com')
             }}
             history={history}
-            showBackButton={true}
+            showBackButton={false}
             showButton={true}
+            showSecondaryButton={true}
+            secondaryButtonTitle="Recent Apps"
+            secondaryButtonIcon={<HistoryIcon />}
+            onSecondaryClick={handleBackToApps}
             onBackClick={handleBackToApps}
           />
 
