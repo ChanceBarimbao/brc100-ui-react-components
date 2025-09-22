@@ -474,12 +474,25 @@ const Greeter: React.FC<any> = ({ history }) => {
               sx={{
                 width: 120,
                 height: 120,
-                bgcolor: 'rgba(255,255,255,0.2)',
-                border: '1px solid rgba(255,255,255,0.4)',
                 borderRadius: 1,
-                flex: '0 0 auto'
+                flex: '0 0 auto',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'rgba(255,255,255,0.2)',
+                border: '1px solid rgba(255,255,255,0.4)'
               }}
-            />
+            >
+              {(appInfo as any)?.Originator || (appInfo as any)?.redirected_from ? (
+                <Box
+                  component="img"
+                  src={`${(((appInfo as any)?.Originator || (appInfo as any)?.redirected_from) as string).replace(/\/$/, '')}/favicon.ico`}
+                  alt={(appInfo as any)?.name ? `${(appInfo as any).name} icon` : 'App icon'}
+                  sx={{ width: '100%', height: '100%', objectFit: 'contain', p: 1 }}
+                />
+              ) : null}
+            </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%' }}>
               <Typography
                 variant="h4"
@@ -491,7 +504,7 @@ const Greeter: React.FC<any> = ({ history }) => {
                   textOverflow: 'ellipsis'
                 }}
               >
-                Example Banner
+                {appInfo?.name}
               </Typography>
               <Typography
                 variant="body1"
@@ -503,7 +516,7 @@ const Greeter: React.FC<any> = ({ history }) => {
                   textOverflow: 'ellipsis'
                 }}
               >
-                Welcome!
+                {appInfo?.message || (appInfo as any)?.custom_message}
               </Typography>
             </Box>
           </Box>
@@ -544,7 +557,7 @@ const Greeter: React.FC<any> = ({ history }) => {
             }}
           >
             {/* {appName} */}
-            Continue to AppinfoJson 
+            Continue to {appInfo?.name} 
             <br />
             on the {appName}
           </Typography>
