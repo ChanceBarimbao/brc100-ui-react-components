@@ -691,6 +691,7 @@ useEffect(() => {
               variant='h2'
               fontFamily='Helvetica'
               fontSize='2em'
+              textAlign='center'
               sx={{
                 mb: 1,
                 fontWeight: 'bold',
@@ -703,12 +704,14 @@ useEffect(() => {
             >
               {appInfo?.name ? (
                 <>
-                  Continue to {appInfo.name}
+                  Continue to {appInfo.name} on the 
                   <br />
-                  on the {appName}
+                  {appName}
                 </>
               ) : (
-                <>Explore apps on the {appName}</>
+                <>Explore apps on the 
+                  <br />
+                  {appName}</>
               )}
             </Typography>
           </Box>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, forwardRef, useMemo, useCallback } from 'react'
 import {
   Typography,
   Container,
@@ -10,7 +10,12 @@ import {
   Modal,
   IconButton,
   FormControl,
-  Button
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Slide,
 } from '@mui/material'
 import Grid2 from '@mui/material/Grid2'
 import { makeStyles } from '@mui/styles'
@@ -23,7 +28,6 @@ import RefreshIcon from '@mui/icons-material/Refresh'
 import Fuse from 'fuse.js'
 import { useHistory } from 'react-router-dom'
 import { Img } from '@bsv/uhrp-react'
-
 import PageHeader from '../../../components/PageHeader'
 import { openUrl } from '../../../utils/openUrl'
 
@@ -60,8 +64,12 @@ const AppCatalog: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false)
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
-
   const inputRef = useRef<HTMLInputElement>(null)
+  type RedirectAppInfo = { name: string; Originator: string; custom_message?: string }
+
+  const [redirectOpen, setRedirectOpen] = useState(false)
+  const [redirectApp, setRedirectApp] = useState<RedirectAppInfo | null>(null)
+
 
   // Configuration for Fuse
   const options = {
@@ -201,8 +209,58 @@ const AppCatalog: React.FC = () => {
   // Load apps on mount
   useEffect(() => {
     loadCatalogApps()
+    try {
+      const s = sessionStorage.getItem('appinfo')
+      if (s) {
+        const parsed = JSON.parse(s) as RedirectAppInfo
+        setRedirectApp(parsed)
+        setRedirectOpen(true)
+      }
+    } catch {
+    }
   }, [])
 
+  const redirectDomain = useMemo(() => {
+    if (!redirectApp?.Originator) return ''
+    try {
+      return new URL(redirectApp.Originator).host
+    } catch {
+      return redirectApp.Originator
+    }
+  }, [redirectApp])
+  
+  // continue handler
+  const handleRedirectContinue = useCallback(() => {
+    if (!redirectApp?.Originator) {
+      setRedirectOpen(false)
+      try { sessionStorage.removeItem('appinfo') } catch {}
+      return
+    }
+    // Try to open synchronously to avoid popup blockers
+    try {
+      if (typeof window !== 'undefined' && typeof window.open === 'function') {
+        const win = window.open(redirectApp.Originator, '_blank', 'noopener,noreferrer')
+        if (!win) {
+          // Fallback if blocked or unavailable
+          openUrl(redirectApp.Originator)
+        }
+      } else {
+        // Non-browser or no window.open: use helper
+        openUrl(redirectApp.Originator)
+      }
+    } catch {
+      // Final fallback
+      openUrl(redirectApp.Originator)
+    }
+    setRedirectOpen(false)
+    try { sessionStorage.removeItem('appinfo') } catch {}
+  }, [redirectApp])
+  
+  // optional: nice slide-up transition
+  const RedirectTransition = forwardRef(function RedirectTransition(props: any, ref: any) {
+    return <Slide direction="up" ref={ref} {...props} />
+  })
+  
   const handleRefreshClick = async () => {
     setIsRefreshing(true)
     const fresh = await fetchCatalog()
@@ -212,6 +270,96 @@ const AppCatalog: React.FC = () => {
 
   return (
     <div className={classes.root}>
+      <Dialog
+  open={redirectOpen}
+  onClose={() => { try { sessionStorage.removeItem('appinfo') } catch {}; setRedirectOpen(false) }}
+  fullWidth
+  maxWidth="sm"
+  TransitionComponent={RedirectTransition}
+  keepMounted
+>
+  <DialogTitle sx={{ fontWeight: 700 }}>
+    Continue to {redirectApp?.name}?
+  </DialogTitle>
+
+  <DialogContent dividers>
+    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
+      {/* Optional: show the app tile if you want */}
+      <Box
+        sx={{
+          width: 64,
+          height: 64,
+          borderRadius: 2,
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'action.hover',
+          flexShrink: 0,
+        }}
+      >
+        {/* If you have MetanetApp, you can use it here instead of this box */}
+        {redirectDomain ? (
+          <img
+            src={`https://${redirectDomain}/favicon.ico`}
+            alt={`${redirectApp?.name} icon`}
+            style={{ maxWidth: '100%', maxHeight: '100%' }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+          />
+        ) : null}
+      </Box>
+
+      <Box sx={{ minWidth: 0 }}>
+        <Typography
+          sx={{
+            fontWeight: 700,
+            fontSize: '1.1rem',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {redirectApp?.name}
+        </Typography>
+
+        {redirectApp?.custom_message && (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              mt: 0.5,
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {redirectApp.custom_message}
+          </Typography>
+        )}
+
+        {redirectDomain && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+            {redirectDomain}
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  </DialogContent>
+
+  <DialogActions sx={{ px: 3, py: 2 }}>
+    <Button onClick={() => { try { sessionStorage.removeItem('appinfo') } catch {}; setRedirectOpen(false) }} color="inherit">
+      Cancel
+    </Button>
+    <Button
+      onClick={handleRedirectContinue}
+      variant="contained"
+      endIcon={<OpenInNewIcon />}
+    >
+      Continue
+    </Button>
+  </DialogActions>
+</Dialog>
       {currentView === 'list' && (
         <>
           <PageHeader
