@@ -221,7 +221,7 @@ const Greeter: React.FC<any> = ({ history }) => {
   const [paused, setPaused] = useState(false)
   const pausedRef = useRef(false)
   const setPausedBoth = useCallback((v: boolean) => { pausedRef.current = v; setPaused(v) }, [])
-  const BELT_SPEED_PX_PER_SEC = 150; // belt speed
+  const BELT_SPEED_PX_PER_SEC = 100; // belt speed
   const segWidthRef = useRef(0);
   const rAFRef = useRef<number | null>(null);
   const scrollByAmount = useCallback((dir: 'left' | 'right') => {
@@ -341,7 +341,7 @@ useEffect(() => {
       loadRecommendedApps()
     } else {
       const sample = {
-        name: 'pollr',
+        name: 'Pollr',
         Originator: 'https://pollr.gg',
         custom_message: 'Please sign up to the metanet to use pollr. A decentralized, secure way to create and vote in polls.'
       }
@@ -509,13 +509,13 @@ useEffect(() => {
   }
 
   // Common tile size based on the 15vh banner height (prevents vertical overflow)
-  const tileSize = 'min(110px, calc(15vh - 16px))'
+  const tileSize = 'min(1100px, calc(15vh - 16px))'
 
   return (
     <>
       {/* === APP BAR with auto-rotating movie slider (no overlap with right side) === */}
       <AppBar position="fixed" color="primary" elevation={0} sx={{ height: '15vh' }}>
-        <Toolbar disableGutters sx={{ height: '15vh', px: 2, overflow: 'hidden' }}>
+        <Toolbar disableGutters sx={{ height: '15vh', px: 2, overflow: 'hidden', '--banner-h': '15vh', }}>
           <Box
             sx={{
               display: 'grid',
@@ -555,8 +555,8 @@ useEffect(() => {
                   }}
                 >
                   <MetanetApp
-                    appName={selectedApp.name}
-                    domain={selectedApp.domain || selectedApp.name}
+                    appName={''}
+                    domain={''}
                     iconImageUrl={selectedApp.icon || (selectedApp.domain ? `https://${selectedApp.domain}/favicon.ico` : undefined)}
                     clickable={false}
                   />
@@ -565,18 +565,39 @@ useEffect(() => {
                 {/* Title + message */}
                 <Box sx={{ minWidth: 0 }}>
                   <Typography
-                    variant="h4"
-                    sx={{ color: 'inherit', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}
+                  variant="h4"
+                  sx={{
+                    color: 'inherit',
+                    fontWeight: 700,
+                    // min 1.1rem, fluid center = 18% of banner height, max 1.9rem
+                    fontSize: 'clamp(1.1rem, calc(var(--banner-h) * 0.18), 1.9rem)',
+                    lineHeight: 1.2,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    textAlign: 'left',
+                  }}
                   >
-                    {appInfo?.name}
+                  {appInfo?.name}
                   </Typography>
+
                   {(appInfo?.message || (appInfo as any)?.custom_message) && (
-                    <Typography
-                      variant="body1"
-                      sx={{ color: 'inherit', opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}
-                    >
-                      {appInfo?.message || (appInfo as any)?.custom_message}
-                    </Typography>
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      color: 'inherit',
+                      opacity: 0.9,
+                      // min 0.9rem, fluid center = 12% of banner height, max 1.2rem
+                      fontSize: 'clamp(0.9rem, calc(var(--banner-h) * 0.12), 1.2rem)',
+                      lineHeight: 1.35,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      textAlign: 'left',
+                    }}
+                  >
+                    {appInfo?.message || (appInfo as any)?.custom_message}
+                  </Typography>
                   )}
                 </Box>
               </Box>
@@ -593,48 +614,48 @@ useEffect(() => {
               >
                 {/* Scrollable rail */}
                 <Box
-  ref={railRef}
-  sx={{
-    width: '100%',
-    overflowX: 'auto',
-    overflowY: 'hidden',
-    scrollbarWidth: 'none',
-    msOverflowStyle: 'none',
-    '&::-webkit-scrollbar': { display: 'none' },
-    display: 'grid',
-    gridAutoFlow: 'column',
-    gridAutoColumns: tileSize,
-    columnGap: 2,          // 16px
-    alignItems: 'center',
-    px: 4,
-    height: '100%',
-    // IMPORTANT: no scrollSnapType for continuous belt
-  }}
->
-  {recommendedLoading
-    ? Array.from({ length: Math.max(10, beltItems.length) }).map((_, i) => (
-        <Skeleton
-          key={`s-${i}`}
-          variant="rounded"
-          sx={{
-            width: tileSize,
-            height: tileSize,
-            bgcolor: 'rgba(255,255,255,0.15)',
-            borderRadius: 2,
-          }}
-        />
-      ))
-    : beltItems.map((ra, idx) => (
-        <Box key={`${ra.token?.txid ?? ra.metadata?.name}-${idx}`}>
-          <MetanetApp
-            appName={ra.metadata.name}
-            domain={ra.metadata.domain || ra.metadata.name}
-            iconImageUrl={ra.metadata.icon || (ra.metadata.domain ? `https://${ra.metadata.domain}/favicon.ico` : undefined)}
-            clickable={false}
-          />
-        </Box>
-      ))}
-</Box>
+                  ref={railRef}
+                  sx={{
+                    width: '100%',
+                    overflowX: 'auto',
+                    overflowY: 'hidden',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                    '&::-webkit-scrollbar': { display: 'none' },
+                    display: 'grid',
+                    gridAutoFlow: 'column',
+                    gridAutoColumns: tileSize,
+                    columnGap: 5,          // 16px
+                    alignItems: 'center',
+                    px: 4,
+                    height: '100%',
+                    // IMPORTANT: no scrollSnapType for continuous belt
+                  }}
+                >
+                  {recommendedLoading
+                    ? Array.from({ length: Math.max(10, beltItems.length) }).map((_, i) => (
+                        <Skeleton
+                          key={`s-${i}`}
+                          variant="rounded"
+                          sx={{
+                            width: tileSize,
+                            height: tileSize,
+                            bgcolor: 'rgba(255,255,255,0.15)',
+                            borderRadius: 2,
+                          }}
+                        />
+                      ))
+                    : beltItems.map((ra, idx) => (
+                        <Box key={`${ra.token?.txid ?? ra.metadata?.name}-${idx}`}>
+                          <MetanetApp
+                            appName={ra.metadata.name}
+                            domain={ra.metadata.domain || ra.metadata.name}
+                            iconImageUrl={ra.metadata.icon || (ra.metadata.domain ? `https://${ra.metadata.domain}/favicon.ico` : undefined)}
+                            clickable={false}
+                          />
+                        </Box>
+                      ))}
+                </Box>
 
                 {/* Left/Right nudge buttons (kept inside the slider column; won't cover right button) */}
                 <IconButton
@@ -654,12 +675,7 @@ useEffect(() => {
               </Box>
             )}
 
-            {/* RIGHT ACTION BUTTON */}
-            <Box sx={{ justifySelf: 'end', position: 'relative', zIndex: 2 /* ensure above any slider bits */ }}>
-              <Button size="small" variant="outlined" color="secondary" onClick={handleToggleSimulateAppinfo}>
-                {appInfo ? 'Show Explore' : 'Show Welcome'}
-              </Button>
-            </Box>
+            
           </Box>
         </Toolbar>
       </AppBar>
@@ -769,7 +785,11 @@ useEffect(() => {
               </Button>
             </RouterLink>
           </Box>
-
+          <Box sx={{ justifySelf: 'end', position: 'relative', zIndex: 2 /* ensure above any slider bits */ }}>
+              <Button size="small" variant="outlined" color="secondary" onClick={handleToggleSimulateAppinfo}>
+                {appInfo ? 'Show Explore' : 'Show Welcome'}
+              </Button>
+            </Box>
           <Typography
             variant='caption'
             color='textSecondary'
