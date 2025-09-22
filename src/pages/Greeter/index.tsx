@@ -30,6 +30,7 @@ import {
   CheckCircle as CheckCircleIcon,
   ChevronLeft,
   ChevronRight,
+  Close as CloseIcon,
 } from '@mui/icons-material'
 import PhoneEntry from '../../components/PhoneEntry.js'
 import AppLogo from '../../components/AppLogo'
@@ -335,7 +336,10 @@ useEffect(() => {
 
   const handleToggleSimulateAppinfo = useCallback(() => {
     if (devSimulateApp) {
-      try { sessionStorage.removeItem('appinfo') } catch {}
+      try {
+        sessionStorage.removeItem('appinfo')
+        sessionStorage.removeItem('appinfo_handled')
+      } catch {}
       setAppinfo(null)
       setWelcomeUser(false)
       loadRecommendedApps()
@@ -345,7 +349,10 @@ useEffect(() => {
         Originator: 'https://pollr.gg',
         custom_message: 'Please sign up to the metanet to use pollr. A decentralized, secure way to create and vote in polls.'
       }
-      try { sessionStorage.setItem('appinfo', JSON.stringify(sample)) } catch {}
+      try {
+        sessionStorage.removeItem('appinfo_handled')
+        sessionStorage.setItem('appinfo', JSON.stringify(sample))
+      } catch {}
       setAppinfo(sample)
       setWelcomeUser(true)
     }
@@ -582,22 +589,23 @@ useEffect(() => {
                   </Typography>
 
                   {(appInfo?.message || (appInfo as any)?.custom_message) && (
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      color: 'inherit',
-                      opacity: 0.9,
-                      // min 0.9rem, fluid center = 12% of banner height, max 1.2rem
-                      fontSize: 'clamp(0.9rem, calc(var(--banner-h) * 0.12), 1.2rem)',
-                      lineHeight: 1.35,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      textAlign: 'left',
-                    }}
-                  >
-                    {appInfo?.message || (appInfo as any)?.custom_message}
-                  </Typography>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        color: 'inherit',
+                        opacity: 0.9,
+                        // min 0.9rem, fluid center = 12% of banner height, max 1.2rem
+                        fontSize: 'clamp(0.9rem, calc(var(--banner-h) * 0.12), 1.2rem)',
+                        lineHeight: 1.35,
+                        display: '-webkit-box',
+                        WebkitBoxOrient: 'vertical',
+                        WebkitLineClamp: 3, // show up to 3 lines in the 15vh banner
+                        overflow: 'hidden',
+                        textAlign: 'left',
+                      }}
+                    >
+                      {appInfo?.message || (appInfo as any)?.custom_message}
+                    </Typography>
                   )}
                 </Box>
               </Box>
@@ -651,7 +659,26 @@ useEffect(() => {
                             appName={ra.metadata.name}
                             domain={ra.metadata.domain || ra.metadata.name}
                             iconImageUrl={ra.metadata.icon || (ra.metadata.domain ? `https://${ra.metadata.domain}/favicon.ico` : undefined)}
-                            clickable={false}
+                            clickable
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const name = ra.metadata.name;
+                              const domain = ra.metadata.domain;
+                              const origin = domain ? `https://${domain}` : undefined;
+                              const sim = {
+                                name,
+                                ...(origin ? { Originator: origin } : {}),
+                                custom_message: `${ra.metadata.description}`
+                              } as any;
+                              try {
+                                sessionStorage.removeItem('appinfo_handled')
+                                sessionStorage.setItem('appinfo', JSON.stringify(sim))
+                              } catch {}
+                              setAppinfo(sim);
+                              setWelcomeUser(true);
+                              setPausedBoth(true);
+                            }}
                           />
                         </Box>
                       ))}
@@ -675,7 +702,28 @@ useEffect(() => {
               </Box>
             )}
 
-            
+            {/* RIGHT COLUMN: Clear (X) button when an app is selected */}
+            {appInfo ? (
+              <Box sx={{ justifySelf: 'end' }}>
+                <IconButton
+                  aria-label="Clear selected app"
+                  color="inherit"
+                  size="small"
+                  onClick={() => {
+                    try { sessionStorage.removeItem('appinfo') } catch {}
+                    setAppinfo(null)
+                    setWelcomeUser(false)
+                    setPausedBoth(false)
+                    loadRecommendedApps()
+                  }}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+            ) : (
+              <Box />
+            )}
+
           </Box>
         </Toolbar>
       </AppBar>
