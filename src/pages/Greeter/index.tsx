@@ -1,5 +1,7 @@
 import { useContext, useState, useRef, useCallback, useEffect } from 'react'
 import {
+  AppBar,
+  Toolbar,
   Typography,
   Button,
   TextField,
@@ -248,6 +250,23 @@ const Greeter: React.FC<any> = ({ history }) => {
   const { appVersion, appName, pageLoaded } = useContext(UserContext)
   const theme = useTheme()
 
+  // Banner/new user state
+  const [welcomeUser, setWelcomeUser] = useState(false)
+  const [appInfo, setAppinfo] = useState<any | null>(null)
+
+  // Check sessionStorage for 'appinfo' once on mount
+  useEffect(() => {
+    try {
+      const appinfo = sessionStorage.getItem('appinfo')
+      if (appinfo) {
+        setWelcomeUser(true)
+        setAppinfo(JSON.parse(appinfo))
+      }
+    } catch (err) {
+      // do nothing because it means they are not a new user or storage is unavailable
+    }
+  }, [])
+
   const viewToStepIndex = useWab ? { phone: 0, code: 1, password: 2 } : { presentation: 0, password: 1 }
   const steps = useWab
     ? [
@@ -437,16 +456,71 @@ const Greeter: React.FC<any> = ({ history }) => {
   }
 
   return (
-    <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <Paper 
-        elevation={4} 
-        sx={{ 
-          p: 4, 
-          borderRadius: 2,
-          bgcolor: 'background.paper',
-          boxShadow: theme.shadows[3]
-        }}
-      >
+    <>
+      <AppBar position="fixed" color="primary" elevation={0} sx={{ height: '15vh' }}>
+        <Toolbar disableGutters sx={{ minHeight: '15vh', justifyContent: 'flex-start', px: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              width: '100%',
+              gap: 1.5,
+              overflow: 'hidden'
+            }}
+          >
+            <Box
+              sx={{
+                width: 120,
+                height: 120,
+                bgcolor: 'rgba(255,255,255,0.2)',
+                border: '1px solid rgba(255,255,255,0.4)',
+                borderRadius: 1,
+                flex: '0 0 auto'
+              }}
+            />
+            <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%' }}>
+              <Typography
+                variant="h4"
+                sx={{
+                  color: 'inherit',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                Example Banner
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{
+                  color: 'inherit',
+                  opacity: 0.9,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                Welcome!
+              </Typography>
+            </Box>
+          </Box>
+        </Toolbar>
+      </AppBar>
+    
+      <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', pt: '15vh' }}>
+        {welcomeUser ? null : (
+          <Paper 
+            elevation={4} 
+            sx={{ 
+              p: 4, 
+              borderRadius: 2,
+              bgcolor: 'background.paper',
+              boxShadow: theme.shadows[3]
+            }}
+          >
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
           <Box sx={{ mb: 2, width: '100px', height: '100px' }}>
             <AppLogo
@@ -469,9 +543,12 @@ const Greeter: React.FC<any> = ({ history }) => {
               WebkitTextFillColor: 'transparent'
             }}
           >
-            {appName}
+            {/* {appName} */}
+            Continue to AppinfoJson 
+            <br />
+            on the {appName}
           </Typography>
-          <Typography 
+          {/* <Typography 
             variant="body1"
             color="text.secondary"
             align="center"
@@ -487,7 +564,7 @@ const Greeter: React.FC<any> = ({ history }) => {
             sx={{ mt: 1 }}
           >
             <i>v{appVersion}</i>
-          </Typography>
+          </Typography> */}
         </Box>
 
         <WalletConfig />
@@ -604,7 +681,9 @@ const Greeter: React.FC<any> = ({ history }) => {
           </a>.
         </Typography>
       </Paper>
-    </Container>
+      )}
+      </Container>
+    </>
   )
 }
 
