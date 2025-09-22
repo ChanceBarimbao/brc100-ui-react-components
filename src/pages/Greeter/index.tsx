@@ -37,6 +37,8 @@ import PageLoading from '../../components/PageLoading.js'
 import { Utils } from '@bsv/sdk'
 import { Link as RouterLink } from 'react-router-dom'
 import WalletConfig from '../../components/WalletConfig.js'
+import { AppCatalog as AppCatalogAPI } from 'metanet-apps'
+import type { PublishedApp } from 'metanet-apps/src/types'
 
 // Helper functions for the Stepper will be defined inside the component
 
@@ -253,19 +255,60 @@ const Greeter: React.FC<any> = ({ history }) => {
   // Banner/new user state
   const [welcomeUser, setWelcomeUser] = useState(false)
   const [appInfo, setAppinfo] = useState<any | null>(null)
+  const [recommendedApps, setRecommendedApps] = useState<PublishedApp[]>([])
+  const [recommendedLoading, setRecommendedLoading] = useState<boolean>(false)
+  const [devSimulateApp, setDevSimulateApp] = useState<boolean>(false)
 
   // Check sessionStorage for 'appinfo' once on mount
+  const loadRecommendedApps = useCallback(async () => {
+    try {
+      setRecommendedLoading(true)
+      const catalog = new AppCatalogAPI({})
+      const apps = await catalog.findApps()
+      setRecommendedApps(apps.slice(0, 6))
+    } catch (err) {
+      // ignore errors quietly for greeter suggestions
+    } finally {
+      setRecommendedLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     try {
       const appinfo = sessionStorage.getItem('appinfo')
       if (appinfo) {
         setWelcomeUser(true)
         setAppinfo(JSON.parse(appinfo))
+      } else {
+        // No appinfo present — show a small set of apps to explore
+        loadRecommendedApps()
       }
     } catch (err) {
-      // do nothing because it means they are not a new user or storage is unavailable
+      // storage unavailable or not a new user — still try to load apps
+      loadRecommendedApps()
     }
-  }, [])
+  }, [loadRecommendedApps])
+
+  const handleToggleSimulateAppinfo = useCallback(() => {
+    if (devSimulateApp) {
+      // Turn OFF simulation: remove appinfo and show explore
+      try { sessionStorage.removeItem('appinfo') } catch {}
+      setAppinfo(null)
+      setWelcomeUser(false)
+      loadRecommendedApps()
+    } else {
+      // Turn ON simulation: set a sample appinfo
+      const sample = {
+        name: 'pollr',
+        Originator: 'https://pollr.gg',
+        custom_message: 'Please sign up to the metanet to use pollr. A decentralized, secure way to create and vote in polls.'
+      }
+      try { sessionStorage.setItem('appinfo', JSON.stringify(sample)) } catch {}
+      setAppinfo(sample)
+      setWelcomeUser(true)
+    }
+    setDevSimulateApp(prev => !prev)
+  }, [devSimulateApp, loadRecommendedApps])
 
   const viewToStepIndex = useWab ? { phone: 0, code: 1, password: 2 } : { presentation: 0, password: 1 }
   const steps = useWab
@@ -464,76 +507,141 @@ const Greeter: React.FC<any> = ({ history }) => {
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'flex-start',
+              justifyContent: appInfo ? 'flex-start' : 'center',
               width: '100%',
               gap: 1.5,
-              overflow: 'hidden'
+              overflow: 'hidden',
+              position: 'relative'
             }}
           >
-            <Box
-              sx={{
-                width: 120,
-                height: 120,
-                borderRadius: 1,
-                flex: '0 0 auto',
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bgcolor: 'rgba(255,255,255,0.2)',
-                border: '1px solid rgba(255,255,255,0.4)'
-              }}
-            >
-              {(appInfo as any)?.Originator || (appInfo as any)?.redirected_from ? (
+            {((appInfo as any)?.Originator || (appInfo as any)?.redirected_from) && (
+              <Box
+                sx={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: 1,
+                  flex: '0 0 auto',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  bgcolor: 'rgba(255,255,255,0.2)',
+                  border: '1px solid rgba(255,255,255,0.4)'
+                }}
+              >
                 <Box
                   component="img"
                   src={`${(((appInfo as any)?.Originator || (appInfo as any)?.redirected_from) as string).replace(/\/$/, '')}/favicon.ico`}
                   alt={(appInfo as any)?.name ? `${(appInfo as any).name} icon` : 'App icon'}
                   sx={{ width: '100%', height: '100%', objectFit: 'contain', p: 1 }}
                 />
-              ) : null}
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%' }}>
-              <Typography
-                variant="h4"
-                sx={{
-                  color: 'inherit',
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}
-              >
-                {appInfo?.name}
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{
-                  color: 'inherit',
-                  opacity: 0.9,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}
-              >
-                {appInfo?.message || (appInfo as any)?.custom_message}
-              </Typography>
+              </Box>
+            )}
+            {appInfo ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%', flex: '1 1 auto' }}>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    color: 'inherit',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    textAlign: 'left'
+                  }}
+                >
+                  {appInfo?.name}
+                </Typography>
+                {(appInfo?.message || (appInfo as any)?.custom_message) && (
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      color: 'inherit',
+                      opacity: 0.9,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      textAlign: 'left'
+                    }}
+                  >
+                    {appInfo?.message || (appInfo as any)?.custom_message}
+                  </Typography>
+                )}
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, flex: '1 1 auto', minWidth: 0 }}>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    color: 'inherit',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    textAlign: 'center'
+                  }}
+                >
+                  Explore apps on the metanet
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridAutoFlow: 'column',
+                    gridAutoColumns: 'minmax(110px, 1fr)',
+                    gap: 1.5,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    justifyItems: 'center',
+                    maxWidth: '80%',
+                    overflow: 'hidden',
+                    px: 1,
+                    mx: 'auto',
+                    width: 'fit-content'
+                  }}
+                >
+                  {recommendedApps.slice(0, 6).map((ra) => (
+                    <Box key={`${ra.token.txid}-${ra.token.outputIndex}`} sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      p: 0.5,
+                      minWidth: 0
+                    }}>
+                      <Box
+                        component="img"
+                        src={ra.metadata.icon || (ra.metadata.domain ? `https://${ra.metadata.domain}/favicon.ico` : undefined)}
+                        alt={ra.metadata.name}
+                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://metanetapps.com/favicon.ico' }}
+                        sx={{ width: 40, height: 40, objectFit: 'contain', mb: 0.5 }}
+                      />
+                      <Typography variant="caption" sx={{ maxWidth: 110, textAlign: 'center', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {ra.metadata.name}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+            <Box sx={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }}>
+              <Button size="small" variant="outlined" color="secondary" onClick={handleToggleSimulateAppinfo}>
+                {appInfo ? 'Show Explore' : 'Show Welcome'}
+              </Button>
             </Box>
           </Box>
         </Toolbar>
       </AppBar>
     
       <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', pt: '15vh' }}>
-        {welcomeUser ? null : (
-          <Paper 
-            elevation={4} 
-            sx={{ 
-              p: 4, 
-              borderRadius: 2,
-              bgcolor: 'background.paper',
-              boxShadow: theme.shadows[3]
-            }}
-          >
+        <Paper 
+          elevation={4} 
+          sx={{ 
+            p: 4, 
+            borderRadius: 2,
+            bgcolor: 'background.paper',
+            boxShadow: theme.shadows[3]
+          }}
+        >
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
           <Box sx={{ mb: 2, width: '100px', height: '100px' }}>
             <AppLogo
@@ -556,10 +664,19 @@ const Greeter: React.FC<any> = ({ history }) => {
               WebkitTextFillColor: 'transparent'
             }}
           >
-            {/* {appName} */}
-            Continue to {appInfo?.name} 
-            <br />
-            on the {appName}
+            {appInfo?.name ? (
+              <>
+                Continue to {appInfo.name}
+                <br />
+                on the {appName}
+              </>
+            ) : (
+              <>
+                Explore apps
+                <br />
+                on the metanet
+              </>
+            )}
           </Typography>
           {/* <Typography 
             variant="body1"
@@ -579,6 +696,8 @@ const Greeter: React.FC<any> = ({ history }) => {
             <i>v{appVersion}</i>
           </Typography> */}
         </Box>
+
+        {/* (Moved) Recommended apps are now shown in the header banner when no app is preselected */}
 
         <WalletConfig />
         
@@ -694,7 +813,6 @@ const Greeter: React.FC<any> = ({ history }) => {
           </a>.
         </Typography>
       </Paper>
-      )}
       </Container>
     </>
   )
