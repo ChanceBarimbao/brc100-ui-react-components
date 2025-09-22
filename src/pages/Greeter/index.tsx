@@ -1,10 +1,11 @@
-import { useContext, useState, useRef, useCallback, useEffect } from 'react'
+import { useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import {
   AppBar,
   Toolbar,
   Typography,
   Button,
   TextField,
+  Skeleton,
   CircularProgress,
   Divider,
   InputAdornment,
@@ -27,6 +28,8 @@ import {
   Visibility,
   VisibilityOff,
   CheckCircle as CheckCircleIcon,
+  ChevronLeft,
+  ChevronRight,
 } from '@mui/icons-material'
 import PhoneEntry from '../../components/PhoneEntry.js'
 import AppLogo from '../../components/AppLogo'
@@ -37,10 +40,9 @@ import PageLoading from '../../components/PageLoading.js'
 import { Utils } from '@bsv/sdk'
 import { Link as RouterLink } from 'react-router-dom'
 import WalletConfig from '../../components/WalletConfig.js'
-import { AppCatalog as AppCatalogAPI } from 'metanet-apps'
-import type { PublishedApp } from 'metanet-apps/src/types'
-
-// Helper functions for the Stepper will be defined inside the component
+import { getAppCatalogApps } from '../../utils/appCatalogCache'
+import type { PublishedApp } from '../../utils/appCatalogCache'
+import MetanetApp from '../../components/MetanetApp'
 
 // Phone form component to reduce cognitive complexity
 const PhoneForm = ({ phone, setPhone, loading, handleSubmitPhone, phoneFieldRef }) => {
@@ -51,22 +53,14 @@ const PhoneForm = ({ phone, setPhone, loading, handleSubmitPhone, phoneFieldRef 
         value={phone}
         onChange={setPhone}
         ref={phoneFieldRef}
-        sx={{
-          width: '100%',
-          mb: 2
-        }}
+        sx={{ width: '100%', mb: 2 }}
       />
       <Button
         variant='contained'
         type='submit'
         disabled={loading || !phone || phone.length < 10}
         fullWidth
-        sx={{ 
-          mt: 2,
-          borderRadius: theme.shape.borderRadius,
-          textTransform: 'none',
-          py: 1.2
-        }}
+        sx={{ mt: 2, borderRadius: theme.shape.borderRadius, textTransform: 'none', py: 1.2 }}
       >
         {loading ? <CircularProgress size={24} /> : 'Continue'}
       </Button>
@@ -96,33 +90,20 @@ const CodeForm = ({ code, setCode, loading, handleSubmitCode, handleResendCode, 
               ),
             }
           }}
-          sx={{ 
-            mb: 2   
-          }}
+          sx={{ mb: 2 }}
         />
         <Button
           variant='contained'
           type='submit'
           disabled={loading || code.length !== 6}
           fullWidth
-          sx={{ 
-            mt: 2,
-            borderRadius: theme.shape.borderRadius,
-            textTransform: 'none',
-            py: 1.2
-          }}
+          sx={{ mt: 2, borderRadius: theme.shape.borderRadius, textTransform: 'none', py: 1.2 }}
         >
           {loading ? <CircularProgress size={24} /> : 'Verify Code'}
         </Button>
       </form>
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-        <Button
-          disabled={loading}
-          onClick={handleResendCode}
-          size="small"
-          color="secondary"
-          sx={{ textTransform: 'none' }}
-        >
+        <Button disabled={loading} onClick={handleResendCode} size="small" color="secondary" sx={{ textTransform: 'none' }}>
           Resend Code
         </Button>
       </Box>
@@ -142,9 +123,7 @@ const PresentationKeyForm = ({ presentationKey, setPresentationKey, loading, han
         variant="outlined"
         fullWidth
         disabled={loading}
-        slotProps={{
-          input: { ref: presentationKeyFieldRef }
-        }}
+        slotProps={{ input: { ref: presentationKeyFieldRef } }}
         sx={{ mb: 2 }}
       />
       <Button
@@ -152,12 +131,7 @@ const PresentationKeyForm = ({ presentationKey, setPresentationKey, loading, han
         type='submit'
         disabled={loading || !presentationKey}
         fullWidth
-        sx={{
-          mt: 2,
-          borderRadius: theme.shape.borderRadius,
-          textTransform: 'none',
-          py: 1.2
-        }}
+        sx={{ mt: 2, borderRadius: theme.shape.borderRadius, textTransform: 'none', py: 1.2 }}
       >
         {loading ? <CircularProgress size={24} /> : 'Continue'}
       </Button>
@@ -182,20 +156,14 @@ const PasswordForm = ({ password, setPassword, confirmPassword, setConfirmPasswo
             ref: passwordFieldRef,
             endAdornment: (
               <InputAdornment position="end">
-                <IconButton
-                  aria-label="toggle password visibility"
-                  onClick={() => setShowPassword(!showPassword)}
-                  edge="end"
-                >
+                <IconButton aria-label="toggle password visibility" onClick={() => setShowPassword(!showPassword)} edge="end">
                   {showPassword ? <VisibilityOff /> : <Visibility />}
                 </IconButton>
               </InputAdornment>
             ),
           }
         }}
-        sx={{ 
-          mb: 2
-        }}
+        sx={{ mb: 2 }}
       />
 
       {accountStatus === 'new-user' && (
@@ -211,20 +179,14 @@ const PasswordForm = ({ password, setPassword, confirmPassword, setConfirmPasswo
             input: {
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton
-                    aria-label="toggle password visibility"
-                    onClick={() => setShowPassword(!showPassword)}
-                    edge="end"
-                  >
+                  <IconButton aria-label="toggle password visibility" onClick={() => setShowPassword(!showPassword)} edge="end">
                     {showPassword ? <VisibilityOff /> : <Visibility />}
                   </IconButton>
                 </InputAdornment>
               ),
             }
           }}
-          sx={{ 
-            mb: 2
-          }}
+          sx={{ mb: 2 }}
         />
       )}
 
@@ -233,12 +195,7 @@ const PasswordForm = ({ password, setPassword, confirmPassword, setConfirmPasswo
         type='submit'
         disabled={loading || !password || (accountStatus === 'new-user' && !confirmPassword)}
         fullWidth
-        sx={{
-          borderRadius: theme.shape.borderRadius,
-          mt: 2,
-          textTransform: 'none',
-          py: 1.2
-        }}
+        sx={{ borderRadius: theme.shape.borderRadius, mt: 2, textTransform: 'none', py: 1.2 }}
       >
         {loading ? <CircularProgress size={24} /> : (accountStatus === 'new-user' ? 'Create Account' : 'Login')}
       </Button>
@@ -259,13 +216,102 @@ const Greeter: React.FC<any> = ({ history }) => {
   const [recommendedLoading, setRecommendedLoading] = useState<boolean>(false)
   const [devSimulateApp, setDevSimulateApp] = useState<boolean>(false)
 
+  // --- Slider refs/state (auto-rotate + controls) ---
+  const railRef = useRef<HTMLDivElement | null>(null)
+  const [paused, setPaused] = useState(false)
+  const pausedRef = useRef(false)
+  const setPausedBoth = useCallback((v: boolean) => { pausedRef.current = v; setPaused(v) }, [])
+  const BELT_SPEED_PX_PER_SEC = 150; // belt speed
+  const segWidthRef = useRef(0);
+  const rAFRef = useRef<number | null>(null);
+  const scrollByAmount = useCallback((dir: 'left' | 'right') => {
+    const el = railRef.current
+    if (!el) return
+    const first = el.firstElementChild as HTMLElement | null
+    const tile = first?.offsetWidth ?? 110
+    const gap = 16
+    const step = tile + gap
+    el.scrollBy({ left: dir === 'left' ? -step : step, behavior: 'smooth' })
+  }, [])
+  const beltItems = useMemo(() => {
+    if (!recommendedApps?.length) return [];
+    return [...recommendedApps, ...recommendedApps];
+  }, [recommendedApps]);
+  
+useEffect(() => {
+  if (appInfo) return; // only run on explore view
+  const el = railRef.current;
+  if (!el) return;
+
+  // measure one segment (the width of the first half = original list)
+  const measure = () => {
+    const children = Array.from(el.children) as HTMLElement[];
+    const half = Math.floor(children.length / 2);
+    if (!half) return;
+    const first = children[0];
+    const last = children[half - 1];
+    segWidthRef.current = (last.offsetLeft + last.offsetWidth) - first.offsetLeft;
+  };
+
+  // measure once the DOM is ready
+  const id = requestAnimationFrame(measure);
+
+  let last = performance.now();
+  const step = (ts: number) => {
+    if (!railRef.current) return;
+    const dt = Math.min(0.05, (ts - last) / 1000); // clamp dt for stability
+    last = ts;
+
+    if (!pausedRef.current && segWidthRef.current > 0) {
+      el.scrollLeft += BELT_SPEED_PX_PER_SEC * dt;
+
+      // wrap seamlessly when we pass one segment
+      const seg = segWidthRef.current;
+      if (el.scrollLeft >= seg) {
+        // jump back by exactly one segment with no animation
+        const prev = el.style.scrollBehavior;
+        el.style.scrollBehavior = 'auto';
+        el.scrollLeft -= seg;
+        el.style.scrollBehavior = prev || '';
+      }
+    }
+    rAFRef.current = requestAnimationFrame(step);
+  };
+
+  rAFRef.current = requestAnimationFrame(step);
+
+  // keep wrapping when user drags/scrolls manually too
+  const onScroll = () => {
+    const seg = segWidthRef.current;
+    if (!seg) return;
+    if (el.scrollLeft >= seg) {
+      const prev = el.style.scrollBehavior;
+      el.style.scrollBehavior = 'auto';
+      el.scrollLeft -= seg;
+      el.style.scrollBehavior = prev || '';
+    } else if (el.scrollLeft < 0) {
+      const prev = el.style.scrollBehavior;
+      el.style.scrollBehavior = 'auto';
+      el.scrollLeft += seg;
+      el.style.scrollBehavior = prev || '';
+    }
+  };
+  el.addEventListener('scroll', onScroll, { passive: true });
+
+  return () => {
+    cancelAnimationFrame(id);
+    if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
+    rAFRef.current = null;
+    el.removeEventListener('scroll', onScroll);
+  };
+}, [appInfo, beltItems.length]);
+
   // Check sessionStorage for 'appinfo' once on mount
   const loadRecommendedApps = useCallback(async () => {
     try {
       setRecommendedLoading(true)
-      const catalog = new AppCatalogAPI({})
-      const apps = await catalog.findApps()
-      setRecommendedApps(apps.slice(0, 6))
+      const apps = await getAppCatalogApps()
+      setRecommendedApps(apps) // let the slider overflow naturally
     } catch (err) {
       // ignore errors quietly for greeter suggestions
     } finally {
@@ -280,24 +326,20 @@ const Greeter: React.FC<any> = ({ history }) => {
         setWelcomeUser(true)
         setAppinfo(JSON.parse(appinfo))
       } else {
-        // No appinfo present — show a small set of apps to explore
         loadRecommendedApps()
       }
     } catch (err) {
-      // storage unavailable or not a new user — still try to load apps
       loadRecommendedApps()
     }
   }, [loadRecommendedApps])
 
   const handleToggleSimulateAppinfo = useCallback(() => {
     if (devSimulateApp) {
-      // Turn OFF simulation: remove appinfo and show explore
       try { sessionStorage.removeItem('appinfo') } catch {}
       setAppinfo(null)
       setWelcomeUser(false)
       loadRecommendedApps()
     } else {
-      // Turn ON simulation: set a sample appinfo
       const sample = {
         name: 'pollr',
         Originator: 'https://pollr.gg',
@@ -310,36 +352,28 @@ const Greeter: React.FC<any> = ({ history }) => {
     setDevSimulateApp(prev => !prev)
   }, [devSimulateApp, loadRecommendedApps])
 
+  // Derive selected app display info (domain, icon) for header
+  const selectedApp = useMemo(() => {
+    const src = (appInfo as any)?.Originator || (appInfo as any)?.redirected_from
+    let domain = ''
+    if (typeof src === 'string') {
+      try { domain = new URL(src).host } catch { domain = '' }
+    }
+    const name = (appInfo as any)?.name || domain
+    const icon = typeof src === 'string' ? src.replace(/\/$/, '') + '/favicon.ico' : undefined
+    return { domain: domain || name || '', name, icon }
+  }, [appInfo])
+
   const viewToStepIndex = useWab ? { phone: 0, code: 1, password: 2 } : { presentation: 0, password: 1 }
   const steps = useWab
     ? [
-        {
-          label: 'Phone Number',
-          icon: <PhoneIcon />,
-          description: 'Enter your phone number for verification'
-        },
-        {
-          label: 'Verification Code',
-          icon: <SMSIcon />,
-          description: 'Enter the code you received via SMS'
-        },
-        {
-          label: 'Password',
-          icon: <LockIcon />,
-          description: 'Enter your password'
-        }
+        { label: 'Phone Number', icon: <PhoneIcon />, description: 'Enter your phone number for verification' },
+        { label: 'Verification Code', icon: <SMSIcon />, description: 'Enter the code you received via SMS' },
+        { label: 'Password', icon: <LockIcon />, description: 'Enter your password' }
       ]
     : [
-        {
-          label: 'Presentation Key',
-          icon: <KeyIcon />,
-          description: 'Paste your presentation key'
-        },
-        {
-          label: 'Password',
-          icon: <LockIcon />,
-          description: 'Enter your password'
-        }
+        { label: 'Presentation Key', icon: <KeyIcon />, description: 'Paste your presentation key' },
+        { label: 'Password', icon: <LockIcon />, description: 'Enter your password' }
       ]
 
   const [step, setStep] = useState(useWab ? 'phone' : 'presentation')
@@ -363,21 +397,18 @@ const Greeter: React.FC<any> = ({ history }) => {
     setStep(useWab ? 'phone' : 'presentation')
   }, [useWab])
 
-  // Step 1: The user enters a phone number, we call manager.startAuth(...)
+  // Step 1: phone
   const handleSubmitPhone = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!walletManager) {
-      toast.error("Wallet Manager not ready yet.")
-      return
-    }
+    if (!walletManager) return toast.error("Wallet Manager not ready yet.")
     try {
       setLoading(true)
       await walletManager?.startAuth({ phoneNumber: phone })
       setStep('code')
       toast.success('A code has been sent to your phone.')
-      // Move focus to code field
       if (codeFieldRef.current) {
-        codeFieldRef.current.focus()
+        // @ts-ignore
+        codeFieldRef.current.focus?.()
       }
     } catch (err: any) {
       console.error(err)
@@ -387,26 +418,18 @@ const Greeter: React.FC<any> = ({ history }) => {
     }
   }, [walletManager, phone])
 
-  // Step 2: The user enters the OTP code, we call manager.completeAuth(...)
+  // Step 2: code
   const handleSubmitCode = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!walletManager) {
-      toast.error("Wallet Manager not ready yet.")
-      return
-    }
+    if (!walletManager) return toast.error("Wallet Manager not ready yet.")
     try {
       setLoading(true)
       await walletManager.completeAuth({ phoneNumber: phone, otp: code })
-
-      if (walletManager.authenticationFlow === 'new-user') {
-        setAccountStatus('new-user')
-      } else {
-        setAccountStatus('existing-user')
-      }
-
+      setAccountStatus(walletManager.authenticationFlow === 'new-user' ? 'new-user' : 'existing-user')
       setStep('password')
       if (passwordFieldRef.current) {
-        passwordFieldRef.current.focus()
+        // @ts-ignore
+        passwordFieldRef.current.focus?.()
       }
     } catch (err: any) {
       console.error(err)
@@ -416,7 +439,7 @@ const Greeter: React.FC<any> = ({ history }) => {
     }
   }, [walletManager, phone, code])
 
-  // Optional "resend code" that just calls startAuth again
+  // Resend code
   const handleResendCode = useCallback(async () => {
     if (!walletManager) return
     try {
@@ -427,30 +450,23 @@ const Greeter: React.FC<any> = ({ history }) => {
       console.error(e)
       toast.error(e.message)
     } finally {
-      // small delay to avoid spam
       await new Promise(resolve => setTimeout(resolve, 2000))
       setLoading(false)
     }
   }, [walletManager, phone])
 
-  // Step for manually providing presentation key when not using WAB
+  // Presentation key (non-WAB)
   const handleSubmitPresentationKey = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!walletManager) {
-      toast.error('Wallet Manager not ready yet.')
-      return
-    }
+    if (!walletManager) return toast.error('Wallet Manager not ready yet.')
     try {
       setLoading(true)
       await walletManager.providePresentationKey(Utils.toArray(presentationKey, 'hex'))
-      if (walletManager.authenticationFlow === 'new-user') {
-        setAccountStatus('new-user')
-      } else {
-        setAccountStatus('existing-user')
-      }
+      setAccountStatus(walletManager.authenticationFlow === 'new-user' ? 'new-user' : 'existing-user')
       setStep('password')
       if (passwordFieldRef.current) {
-        passwordFieldRef.current.focus()
+        // @ts-ignore
+        passwordFieldRef.current.focus?.()
       }
     } catch (err: any) {
       console.error(err)
@@ -460,18 +476,12 @@ const Greeter: React.FC<any> = ({ history }) => {
     }
   }, [walletManager, presentationKey])
 
-  // Step 3: Provide a password for the final step.
+  // Step 3: password
   const handleSubmitPassword = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!walletManager) {
-      toast.error("Wallet Manager not ready yet.")
-      return
-    }
-
-    // If new-user, confirm password match
+    if (!walletManager) return toast.error("Wallet Manager not ready yet.")
     if (accountStatus === 'new-user' && password !== confirmPassword) {
-      toast.error("Passwords don't match.")
-      return
+      return toast.error("Passwords don't match.")
     }
 
     setLoading(true)
@@ -492,138 +502,160 @@ const Greeter: React.FC<any> = ({ history }) => {
     } finally {
       setLoading(false)
     }
-  }, [walletManager, password, confirmPassword])
+  }, [walletManager, password, confirmPassword, accountStatus, history])
 
   if (!pageLoaded) {
     return <PageLoading />
   }
 
+  // Common tile size based on the 15vh banner height (prevents vertical overflow)
+  const tileSize = 'min(110px, calc(15vh - 16px))'
+
   return (
     <>
+      {/* === APP BAR with auto-rotating movie slider (no overlap with right side) === */}
       <AppBar position="fixed" color="primary" elevation={0} sx={{ height: '15vh' }}>
-        <Toolbar disableGutters sx={{ minHeight: '15vh', justifyContent: 'flex-start', px: 2 }}>
+        <Toolbar disableGutters sx={{ height: '15vh', px: 2, overflow: 'hidden' }}>
           <Box
             sx={{
-              display: 'flex',
-              flexDirection: 'row',
+              display: 'grid',
+              gridTemplateColumns: '1fr auto', // main content | right button
               alignItems: 'center',
-              justifyContent: appInfo ? 'flex-start' : 'center',
+              columnGap: 1.5,
               width: '100%',
-              gap: 1.5,
-              overflow: 'hidden',
-              position: 'relative'
+              height: '100%',
+              minWidth: 0
             }}
           >
-            {((appInfo as any)?.Originator || (appInfo as any)?.redirected_from) && (
+            {/* MAIN CONTENT */}
+            {appInfo ? (
+              // appInfo exists: single tile + title/message (LEFT-ALIGNED, VERT-CENTERED)
               <Box
                 sx={{
-                  width: 120,
-                  height: 120,
-                  borderRadius: 1,
-                  flex: '0 0 auto',
-                  overflow: 'hidden',
-                  display: 'flex',
+                  display: 'grid',
+                  gridAutoFlow: 'column',
+                  gridAutoColumns: 'auto 1fr',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  bgcolor: 'rgba(255,255,255,0.2)',
-                  border: '1px solid rgba(255,255,255,0.4)'
+                  columnGap: 2,
+                  minWidth: 0,
+                  height: '100%',
                 }}
               >
-                <Box
-                  component="img"
-                  src={`${(((appInfo as any)?.Originator || (appInfo as any)?.redirected_from) as string).replace(/\/$/, '')}/favicon.ico`}
-                  alt={(appInfo as any)?.name ? `${(appInfo as any).name} icon` : 'App icon'}
-                  sx={{ width: '100%', height: '100%', objectFit: 'contain', p: 1 }}
-                />
-              </Box>
-            )}
-            {appInfo ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%', flex: '1 1 auto' }}>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    color: 'inherit',
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    textAlign: 'left'
-                  }}
-                >
-                  {appInfo?.name}
-                </Typography>
-                {(appInfo?.message || (appInfo as any)?.custom_message) && (
-                  <Typography
-                    variant="body1"
-                    sx={{
-                      color: 'inherit',
-                      opacity: 0.9,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      textAlign: 'left'
-                    }}
-                  >
-                    {appInfo?.message || (appInfo as any)?.custom_message}
-                  </Typography>
-                )}
-              </Box>
-            ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, flex: '1 1 auto', minWidth: 0 }}>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    color: 'inherit',
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    textAlign: 'center'
-                  }}
-                >
-                  Explore apps on the metanet
-                </Typography>
+                {/* Tile to match explore vibe */}
                 <Box
                   sx={{
-                    display: 'grid',
-                    gridAutoFlow: 'column',
-                    gridAutoColumns: 'minmax(110px, 1fr)',
-                    gap: 1.5,
+                    width: tileSize,
+                    height: tileSize,
+                    display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    justifyItems: 'center',
-                    maxWidth: '80%',
+                    borderRadius: 2,
                     overflow: 'hidden',
-                    px: 1,
-                    mx: 'auto',
-                    width: 'fit-content'
+                    '& img, & svg': { display: 'block', maxHeight: '100%', width: 'auto', objectFit: 'contain' }
                   }}
                 >
-                  {recommendedApps.slice(0, 6).map((ra) => (
-                    <Box key={`${ra.token.txid}-${ra.token.outputIndex}`} sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      p: 0.5,
-                      minWidth: 0
-                    }}>
-                      <Box
-                        component="img"
-                        src={ra.metadata.icon || (ra.metadata.domain ? `https://${ra.metadata.domain}/favicon.ico` : undefined)}
-                        alt={ra.metadata.name}
-                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://metanetapps.com/favicon.ico' }}
-                        sx={{ width: 40, height: 40, objectFit: 'contain', mb: 0.5 }}
-                      />
-                      <Typography variant="caption" sx={{ maxWidth: 110, textAlign: 'center', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {ra.metadata.name}
-                      </Typography>
-                    </Box>
-                  ))}
+                  <MetanetApp
+                    appName={selectedApp.name}
+                    domain={selectedApp.domain || selectedApp.name}
+                    iconImageUrl={selectedApp.icon || (selectedApp.domain ? `https://${selectedApp.domain}/favicon.ico` : undefined)}
+                    clickable={false}
+                  />
+                </Box>
+
+                {/* Title + message */}
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography
+                    variant="h4"
+                    sx={{ color: 'inherit', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}
+                  >
+                    {appInfo?.name}
+                  </Typography>
+                  {(appInfo?.message || (appInfo as any)?.custom_message) && (
+                    <Typography
+                      variant="body1"
+                      sx={{ color: 'inherit', opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}
+                    >
+                      {appInfo?.message || (appInfo as any)?.custom_message}
+                    </Typography>
+                  )}
                 </Box>
               </Box>
+            ) : (
+              // no appInfo: MOVIE SLIDER (scroll-snap, auto-rotate, touch/trackpad friendly)
+              <Box
+                sx={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center', minWidth: 0, zIndex: 0, pr: 6 /* space away from right column */ }}
+                onMouseEnter={() => setPausedBoth(true)}
+                onMouseLeave={() => setPausedBoth(false)}
+                onTouchStart={() => setPausedBoth(true)}
+                onTouchEnd={() => setTimeout(() => setPausedBoth(false), 1000)}
+                onFocusCapture={() => setPausedBoth(true)}
+                onBlurCapture={() => setPausedBoth(false)}
+              >
+                {/* Scrollable rail */}
+                <Box
+  ref={railRef}
+  sx={{
+    width: '100%',
+    overflowX: 'auto',
+    overflowY: 'hidden',
+    scrollbarWidth: 'none',
+    msOverflowStyle: 'none',
+    '&::-webkit-scrollbar': { display: 'none' },
+    display: 'grid',
+    gridAutoFlow: 'column',
+    gridAutoColumns: tileSize,
+    columnGap: 2,          // 16px
+    alignItems: 'center',
+    px: 4,
+    height: '100%',
+    // IMPORTANT: no scrollSnapType for continuous belt
+  }}
+>
+  {recommendedLoading
+    ? Array.from({ length: Math.max(10, beltItems.length) }).map((_, i) => (
+        <Skeleton
+          key={`s-${i}`}
+          variant="rounded"
+          sx={{
+            width: tileSize,
+            height: tileSize,
+            bgcolor: 'rgba(255,255,255,0.15)',
+            borderRadius: 2,
+          }}
+        />
+      ))
+    : beltItems.map((ra, idx) => (
+        <Box key={`${ra.token?.txid ?? ra.metadata?.name}-${idx}`}>
+          <MetanetApp
+            appName={ra.metadata.name}
+            domain={ra.metadata.domain || ra.metadata.name}
+            iconImageUrl={ra.metadata.icon || (ra.metadata.domain ? `https://${ra.metadata.domain}/favicon.ico` : undefined)}
+            clickable={false}
+          />
+        </Box>
+      ))}
+</Box>
+
+                {/* Left/Right nudge buttons (kept inside the slider column; won't cover right button) */}
+                <IconButton
+                  size="small"
+                  onClick={() => scrollByAmount('left')}
+                  sx={{ position: 'absolute', left: 4, zIndex: 1, background: 'rgba(0,0,0,0.15)' }}
+                >
+                  <ChevronLeft />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => scrollByAmount('right')}
+                  sx={{ position: 'absolute', right: 4, zIndex: 1, background: 'rgba(0,0,0,0.15)' }}
+                >
+                  <ChevronRight />
+                </IconButton>
+              </Box>
             )}
-            <Box sx={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }}>
+
+            {/* RIGHT ACTION BUTTON */}
+            <Box sx={{ justifySelf: 'end', position: 'relative', zIndex: 2 /* ensure above any slider bits */ }}>
               <Button size="small" variant="outlined" color="secondary" onClick={handleToggleSimulateAppinfo}>
                 {appInfo ? 'Show Explore' : 'Show Welcome'}
               </Button>
@@ -631,188 +663,134 @@ const Greeter: React.FC<any> = ({ history }) => {
           </Box>
         </Toolbar>
       </AppBar>
-    
+      {/* === END APP BAR === */}
+
       <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', pt: '15vh' }}>
-        <Paper 
-          elevation={4} 
-          sx={{ 
-            p: 4, 
-            borderRadius: 2,
-            bgcolor: 'background.paper',
-            boxShadow: theme.shadows[3]
-          }}
-        >
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
-          <Box sx={{ mb: 2, width: '100px', height: '100px' }}>
-            <AppLogo
-              rotate
-              size="100px"
-              color="#2196F3"
-            />
-          </Box>
-          <Typography 
-            variant='h2' 
-            fontFamily='Helvetica' 
-            fontSize='2em'
-            sx={{
-              mb: 1,
-              fontWeight: 'bold',
-              background: theme.palette.mode === 'dark' 
-                ? 'linear-gradient(90deg, #FFFFFF 0%, #F5F5F5 100%)'
-                : 'linear-gradient(90deg, #2196F3 0%, #4569E5 100%)',
-              backgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
-            }}
-          >
-            {appInfo?.name ? (
-              <>
-                Continue to {appInfo.name}
-                <br />
-                on the {appName}
-              </>
-            ) : (
-              <>
-                Explore apps
-                <br />
-                on the metanet
-              </>
-            )}
-          </Typography>
-          {/* <Typography 
-            variant="body1"
-            color="text.secondary"
-            align="center"
-            sx={{ mb: 3 }}
-          >
-            Secure BSV Blockchain Wallet
-          </Typography>
-          <Divider sx={{ width: '80%' }} />
-          <Typography 
-            variant="caption"
-            color="text.secondary"
-            align="center"
-            sx={{ mt: 1 }}
-          >
-            <i>v{appVersion}</i>
-          </Typography> */}
-        </Box>
-
-        {/* (Moved) Recommended apps are now shown in the header banner when no app is preselected */}
-
-        <WalletConfig />
-        
-        {/* Authentication Stepper - replaces Accordions for clearer progression */}
-        {configStatus === 'configured' && (
-          <Stepper activeStep={viewToStepIndex[step]} orientation="vertical">
-          {steps.map((step, index) => (
-            <Step key={step.label}>
-              <StepLabel 
-                icon={step.icon}
-                optional={
-                  <Typography variant="caption" color="text.secondary">
-                    {step.description}
-                  </Typography>
-                }
-              >
-                <Typography variant="body2" fontWeight={500}>
-                  {step.label}
-                </Typography>
-              </StepLabel>
-              <StepContent>
-                {index === 0 && (
-                  useWab ? (
-                    <PhoneForm
-                      phone={phone}
-                      setPhone={setPhone}
-                      loading={loading}
-                      handleSubmitPhone={handleSubmitPhone}
-                      phoneFieldRef={phoneFieldRef}
-                    />
-                  ) : (
-                    <PresentationKeyForm
-                      presentationKey={presentationKey}
-                      setPresentationKey={setPresentationKey}
-                      loading={loading}
-                      handleSubmitPresentationKey={handleSubmitPresentationKey}
-                      presentationKeyFieldRef={presentationKeyFieldRef}
-                    />
-                  )
-                )}
-
-                {useWab && index === 1 && (
-                  <CodeForm
-                    code={code}
-                    setCode={setCode}
-                    loading={loading}
-                    handleSubmitCode={handleSubmitCode}
-                    handleResendCode={handleResendCode}
-                    codeFieldRef={codeFieldRef}
-                  />
-                )}
-
-                {(useWab ? index === 2 : index === 1) && (
-                  <PasswordForm
-                    password={password}
-                    setPassword={setPassword}
-                    confirmPassword={confirmPassword}
-                    setConfirmPassword={setConfirmPassword}
-                    showPassword={showPassword}
-                    setShowPassword={setShowPassword}
-                    loading={loading}
-                    handleSubmitPassword={handleSubmitPassword}
-                    accountStatus={accountStatus}
-                    passwordFieldRef={passwordFieldRef}
-                  />
-                )}
-              </StepContent>
-            </Step>
-          ))}
-          </Stepper>
-        )}
-
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
-          <RouterLink to='/recovery' style={{ textDecoration: 'none' }}>
-            <Button 
-              variant="text" 
-              color='secondary'
-              size="small"
-              startIcon={<RestoreIcon />}
+        <Paper elevation={4} sx={{ p: 4, borderRadius: 2, bgcolor: 'background.paper', boxShadow: theme.shadows[3] }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
+            <Box sx={{ mb: 2, width: '100px', height: '100px' }}>
+              <AppLogo rotate size="100px" color="#2196F3" />
+            </Box>
+            <Typography
+              variant='h2'
+              fontFamily='Helvetica'
+              fontSize='2em'
+              sx={{
+                mb: 1,
+                fontWeight: 'bold',
+                background: theme.palette.mode === 'dark'
+                  ? 'linear-gradient(90deg, #FFFFFF 0%, #F5F5F5 100%)'
+                  : 'linear-gradient(90deg, #2196F3 0%, #4569E5 100%)',
+                backgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}
             >
-              Account Recovery
-            </Button>
-          </RouterLink>
-        </Box>
+              {appInfo?.name ? (
+                <>
+                  Continue to {appInfo.name}
+                  <br />
+                  on the {appName}
+                </>
+              ) : (
+                <>Explore apps on the {appName}</>
+              )}
+            </Typography>
+          </Box>
 
-        <Typography
-          variant='caption'
-          color='textSecondary'
-          align='center'
-          sx={{ 
-            display: 'block',
-            mt: 3,
-            mb: 1,
-            fontSize: '0.75rem',
-            opacity: 0.7
-          }}
-        >
-          By using this software, you acknowledge that you have read, understood and accepted the terms of the{' '}
-          <a
-            href='https://github.com/bitcoin-sv/metanet-desktop/blob/master/LICENSE.txt'
-            target='_blank'
-            rel='noopener noreferrer'
-            onClick={(e) => {
-              // Prevent default behavior for the link
-              e.preventDefault()
-              // In a browser environment, this will work as expected
-              // In Tauri, this will be handled by the configured shell handler
-              window.open('https://github.com/bitcoin-sv/metanet-desktop/blob/master/LICENSE.txt', '_blank', 'noopener,noreferrer')
-            }}
-            style={{ color: theme.palette.primary.main, textDecoration: 'none' }}
+          <WalletConfig />
+
+          {/* Authentication Stepper */}
+          {configStatus === 'configured' && (
+            <Stepper activeStep={viewToStepIndex[step]} orientation="vertical">
+              {steps.map((step, index) => (
+                <Step key={step.label}>
+                  <StepLabel
+                    icon={step.icon}
+                    optional={<Typography variant="caption" color="text.secondary">{step.description}</Typography>}
+                  >
+                    <Typography variant="body2" fontWeight={500}>{step.label}</Typography>
+                  </StepLabel>
+                  <StepContent>
+                    {index === 0 && (
+                      useWab ? (
+                        <PhoneForm
+                          phone={phone}
+                          setPhone={setPhone}
+                          loading={loading}
+                          handleSubmitPhone={handleSubmitPhone}
+                          phoneFieldRef={phoneFieldRef}
+                        />
+                      ) : (
+                        <PresentationKeyForm
+                          presentationKey={presentationKey}
+                          setPresentationKey={setPresentationKey}
+                          loading={loading}
+                          handleSubmitPresentationKey={handleSubmitPresentationKey}
+                          presentationKeyFieldRef={presentationKeyFieldRef}
+                        />
+                      )
+                    )}
+
+                    {useWab && index === 1 && (
+                      <CodeForm
+                        code={code}
+                        setCode={setCode}
+                        loading={loading}
+                        handleSubmitCode={handleSubmitCode}
+                        handleResendCode={handleResendCode}
+                        codeFieldRef={codeFieldRef}
+                      />
+                    )}
+
+                    {(useWab ? index === 2 : index === 1) && (
+                      <PasswordForm
+                        password={password}
+                        setPassword={setPassword}
+                        confirmPassword={confirmPassword}
+                        setConfirmPassword={setConfirmPassword}
+                        showPassword={showPassword}
+                        setShowPassword={setShowPassword}
+                        loading={loading}
+                        handleSubmitPassword={handleSubmitPassword}
+                        accountStatus={accountStatus}
+                        passwordFieldRef={passwordFieldRef}
+                      />
+                    )}
+                  </StepContent>
+                </Step>
+              ))}
+            </Stepper>
+          )}
+
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
+            <RouterLink to='/recovery' style={{ textDecoration: 'none' }}>
+              <Button variant="text" color='secondary' size="small" startIcon={<RestoreIcon />}>
+                Account Recovery
+              </Button>
+            </RouterLink>
+          </Box>
+
+          <Typography
+            variant='caption'
+            color='textSecondary'
+            align='center'
+            sx={{ display: 'block', mt: 3, mb: 1, fontSize: '0.75rem', opacity: 0.7 }}
           >
-            Software License
-          </a>.
-        </Typography>
-      </Paper>
+            By using this software, you acknowledge that you have read, understood and accepted the terms of the{' '}
+            <a
+              href='https://github.com/bitcoin-sv/metanet-desktop/blob/master/LICENSE.txt'
+              target='_blank'
+              rel='noopener noreferrer'
+              onClick={(e) => {
+                e.preventDefault()
+                window.open('https://github.com/bitcoin-sv/metanet-desktop/blob/master/LICENSE.txt', '_blank', 'noopener,noreferrer')
+              }}
+              style={{ color: theme.palette.primary.main, textDecoration: 'none' }}
+            >
+              Software License
+            </a>.
+          </Typography>
+        </Paper>
       </Container>
     </>
   )
