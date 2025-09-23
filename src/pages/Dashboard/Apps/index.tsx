@@ -24,7 +24,6 @@ import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import Fuse from 'fuse.js'
 import { useHistory } from 'react-router-dom'
-import PageHeader from '../../../components/PageHeader'
 
 import style from './style'
 import MetanetApp from '../../../components/MetanetApp'
@@ -132,10 +131,7 @@ const Apps: React.FC = () => {
     }
   }
   const handleViewCatalog = () => {
-    history.push('/dashboard/apps')
-  }
-  const handleBackToCatalog = () => {
-    history.push('/dashboard/apps')
+    history.push('/dashboard/app-catalog')
   }
 
   // On mount, load the apps & recent apps
@@ -201,24 +197,31 @@ const Apps: React.FC = () => {
 
   return (
     <div className={classes.apps_view}>
-      <PageHeader
-        title="Recent Apps"
-        subheading={
-          <Typography variant="body2" color="textSecondary">
-            Apps you've used recently and pinned
-          </Typography>
-        }
-        icon="https://metanetapps.com/favicon.ico"
-        buttonTitle="Open App Catalog"
-        buttonIcon={<ExploreIcon />}
-        onClick={handleViewCatalog}
-        history={history as any}
-        showButton={true}
-        showBackButton={true}
-        onBackClick={handleBackToCatalog}
-      />
+      <Container
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <Typography variant="h1" color="textPrimary" sx={{ mb: 2 }}>
+          Apps
+        </Typography>
+        <Typography variant="body1" color="textSecondary" sx={{ mb: 2 }}>
+          Browse and manage your application permissions.
+        </Typography>
 
-      <Container>
+        {/* View App Catalog Button */}
+        <Button
+          variant="outlined"
+          startIcon={<ExploreIcon />}
+          onClick={handleViewCatalog}
+          sx={{ mb: 2 }}
+        >
+          View App Catalog
+        </Button>
+
         <FormControl sx={{
           width: '100%',
           display: 'flex',

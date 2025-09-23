@@ -379,18 +379,21 @@ useEffect(() => {
     setStep(useWab ? 'phone' : 'presentation')
   }, [useWab])
 
-  // Step 1: phone
+  // Step 1: The user enters a phone number, we call manager.startAuth(...)
   const handleSubmitPhone = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!walletManager) return toast.error("Wallet Manager not ready yet.")
+    if (!walletManager) {
+      toast.error("Wallet Manager not ready yet.")
+      return
+    }
     try {
       setLoading(true)
       await walletManager?.startAuth({ phoneNumber: phone })
       setStep('code')
       toast.success('A code has been sent to your phone.')
+      // Move focus to code field
       if (codeFieldRef.current) {
-        // @ts-ignore
-        codeFieldRef.current.focus?.()
+        codeFieldRef.current.focus()
       }
     } catch (err: any) {
       console.error(err)
@@ -400,18 +403,26 @@ useEffect(() => {
     }
   }, [walletManager, phone])
 
-  // Step 2: code
+  // Step 2: The user enters the OTP code, we call manager.completeAuth(...)
   const handleSubmitCode = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!walletManager) return toast.error("Wallet Manager not ready yet.")
+    if (!walletManager) {
+      toast.error("Wallet Manager not ready yet.")
+      return
+    }
     try {
       setLoading(true)
       await walletManager.completeAuth({ phoneNumber: phone, otp: code })
-      setAccountStatus(walletManager.authenticationFlow === 'new-user' ? 'new-user' : 'existing-user')
+
+      if (walletManager.authenticationFlow === 'new-user') {
+        setAccountStatus('new-user')
+      } else {
+        setAccountStatus('existing-user')
+      }
+
       setStep('password')
       if (passwordFieldRef.current) {
-        // @ts-ignore
-        passwordFieldRef.current.focus?.()
+        passwordFieldRef.current.focus()
       }
     } catch (err: any) {
       console.error(err)
@@ -421,7 +432,7 @@ useEffect(() => {
     }
   }, [walletManager, phone, code])
 
-  // Resend code
+  // Optional "resend code" that just calls startAuth again
   const handleResendCode = useCallback(async () => {
     if (!walletManager) return
     try {
@@ -432,23 +443,30 @@ useEffect(() => {
       console.error(e)
       toast.error(e.message)
     } finally {
+      // small delay to avoid spam
       await new Promise(resolve => setTimeout(resolve, 2000))
       setLoading(false)
     }
   }, [walletManager, phone])
 
-  // Presentation key (non-WAB)
+  // Step for manually providing presentation key when not using WAB
   const handleSubmitPresentationKey = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!walletManager) return toast.error('Wallet Manager not ready yet.')
+    if (!walletManager) {
+      toast.error('Wallet Manager not ready yet.')
+      return
+    }
     try {
       setLoading(true)
       await walletManager.providePresentationKey(Utils.toArray(presentationKey, 'hex'))
-      setAccountStatus(walletManager.authenticationFlow === 'new-user' ? 'new-user' : 'existing-user')
+      if (walletManager.authenticationFlow === 'new-user') {
+        setAccountStatus('new-user')
+      } else {
+        setAccountStatus('existing-user')
+      }
       setStep('password')
       if (passwordFieldRef.current) {
-        // @ts-ignore
-        passwordFieldRef.current.focus?.()
+        passwordFieldRef.current.focus()
       }
     } catch (err: any) {
       console.error(err)
@@ -458,12 +476,12 @@ useEffect(() => {
     }
   }, [walletManager, presentationKey])
 
-  // Step 3: password
+  // Step 3: Provide a password for the final step.
   const handleSubmitPassword = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!walletManager) return toast.error("Wallet Manager not ready yet.")
-    if (accountStatus === 'new-user' && password !== confirmPassword) {
-      return toast.error("Passwords don't match.")
+    if (!walletManager) {
+      toast.error("Wallet Manager not ready yet.")
+      return
     }
 
     setLoading(true)
@@ -491,7 +509,7 @@ useEffect(() => {
   }
 
   // Common tile size based on the 15vh banner height (prevents vertical overflow)
-  const tileSize = 'min(1100px, calc(15vh - 16px))'
+  const tileSize = 'min(1000px, calc(15vh - 16px))'
 
   return (
     <>
@@ -501,9 +519,9 @@ useEffect(() => {
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: '1fr auto', // main content | right button
+              gridTemplateColumns: '10fr auto', // main content | right button
               alignItems: 'center',
-              columnGap: 1.5,
+              columnGap: 5,
               width: '100%',
               height: '100%',
               minWidth: 0
@@ -629,7 +647,7 @@ useEffect(() => {
                     display: 'grid',
                     gridAutoFlow: 'column',
                     gridAutoColumns: tileSize,
-                    columnGap: 5,          // 16px
+                    columnGap: 10,          // 16px
                     alignItems: 'center',
                     px: 4,
                     height: '100%',
