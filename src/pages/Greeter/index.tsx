@@ -334,31 +334,6 @@ useEffect(() => {
     }
   }, [loadRecommendedApps])
 
-  const handleToggleSimulateAppinfo = useCallback(() => {
-    if (devSimulateApp) {
-      try {
-        sessionStorage.removeItem('appinfo')
-        sessionStorage.removeItem('appinfo_handled')
-      } catch {}
-      setAppinfo(null)
-      setWelcomeUser(false)
-      loadRecommendedApps()
-    } else {
-      const sample = {
-        name: 'Pollr',
-        Originator: 'https://pollr.gg',
-        custom_message: 'Please sign up to the metanet to use pollr. A decentralized, secure way to create and vote in polls.'
-      }
-      try {
-        sessionStorage.removeItem('appinfo_handled')
-        sessionStorage.setItem('appinfo', JSON.stringify(sample))
-      } catch {}
-      setAppinfo(sample)
-      setWelcomeUser(true)
-    }
-    setDevSimulateApp(prev => !prev)
-  }, [devSimulateApp, loadRecommendedApps])
-
   // Derive selected app display info (domain, icon) for header
   const selectedApp = useMemo(() => {
     const src = (appInfo as any)?.Originator || (appInfo as any)?.redirected_from
@@ -853,11 +828,6 @@ useEffect(() => {
               </Button>
             </RouterLink>
           </Box>
-          <Box sx={{ justifySelf: 'end', position: 'relative', zIndex: 2 /* ensure above any slider bits */ }}>
-              <Button size="small" variant="outlined" color="secondary" onClick={handleToggleSimulateAppinfo}>
-                {appInfo ? 'Show Explore' : 'Show Welcome'}
-              </Button>
-            </Box>
           <Typography
             variant='caption'
             color='textSecondary'

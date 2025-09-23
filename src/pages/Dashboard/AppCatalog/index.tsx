@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useRef, forwardRef, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Typography,
   Container,
   TextField,
+  LinearProgress,
   Box,
   Chip,
   Card,
   Modal,
   IconButton,
   FormControl,
-  Button,
-  Slide,
+  Button
 } from '@mui/material'
 import Grid2 from '@mui/material/Grid2'
 import { makeStyles } from '@mui/styles'
@@ -23,9 +23,10 @@ import RefreshIcon from '@mui/icons-material/Refresh'
 import Fuse from 'fuse.js'
 import { useHistory } from 'react-router-dom'
 import { Img } from '@bsv/uhrp-react'
+
 import PageHeader from '../../../components/PageHeader'
 import { openUrl } from '../../../utils/openUrl'
-import { toast } from 'react-toastify'
+
 import { AppCatalog as AppCatalogAPI } from 'metanet-apps'
 import type { PublishedApp } from 'metanet-apps/src/types'
 import CounterpartyChip from '../../../components/CounterpartyChip'
@@ -59,8 +60,8 @@ const AppCatalog: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false)
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
-  const inputRef = useRef<HTMLInputElement>(null)
 
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // Configuration for Fuse
   const options = {
@@ -201,7 +202,7 @@ const AppCatalog: React.FC = () => {
   useEffect(() => {
     loadCatalogApps()
   }, [])
-  
+
   const handleRefreshClick = async () => {
     setIsRefreshing(true)
     const fresh = await fetchCatalog()
