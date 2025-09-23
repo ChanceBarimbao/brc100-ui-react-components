@@ -3,7 +3,6 @@ import {
   Typography,
   Container,
   TextField,
-  LinearProgress,
   Box,
   Chip,
   Card,
@@ -11,10 +10,6 @@ import {
   IconButton,
   FormControl,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Slide,
 } from '@mui/material'
 import Grid2 from '@mui/material/Grid2'
@@ -65,10 +60,6 @@ const AppCatalog: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  type RedirectAppInfo = { name: string; Originator: string; custom_message?: string }
-
-  const [redirectOpen, setRedirectOpen] = useState(false)
-  const [redirectApp, setRedirectApp] = useState<RedirectAppInfo | null>(null)
 
 
   // Configuration for Fuse
@@ -209,50 +200,7 @@ const AppCatalog: React.FC = () => {
   // Load apps on mount
   useEffect(() => {
     loadCatalogApps()
-    try {
-      const s = sessionStorage.getItem('appinfo')
-      if (s) {
-        const parsed = JSON.parse(s) as RedirectAppInfo
-        setRedirectApp(parsed)
-        setRedirectOpen(true)
-      }
-    } catch {
-    }
   }, [])
-
-  const redirectDomain = useMemo(() => {
-    if (!redirectApp?.Originator) return ''
-    try {
-      return new URL(redirectApp.Originator).host
-    } catch {
-      return redirectApp.Originator
-    }
-  }, [redirectApp])
-  
-  // continue handler
-  const handleRedirectContinue = useCallback(() => {
-    const url = redirectApp?.Originator
-    // Close any open modals/dialogs immediately
-    setRedirectOpen(false)
-    setOpenModal(false)
-    try { sessionStorage.removeItem('appinfo') } catch {}
-
-    if (!url) return
-
-    // Defer opening the URL until after the dialog has unmounted to avoid any overlay/focus issues
-    setTimeout(() => {
-      try {
-        openUrl(url)
-      } catch {
-        toast.error('Failed to open app')
-      }
-    }, 0)
-  }, [redirectApp])
-  
-  // optional: nice slide-up transition
-  const RedirectTransition = forwardRef(function RedirectTransition(props: any, ref: any) {
-    return <Slide direction="up" ref={ref} {...props} />
-  })
   
   const handleRefreshClick = async () => {
     setIsRefreshing(true)
@@ -263,99 +211,6 @@ const AppCatalog: React.FC = () => {
 
   return (
     <div className={classes.root}>
-      {redirectOpen && (
-        <Dialog
-          open
-          onClose={() => { try { sessionStorage.removeItem('appinfo') } catch {}; setRedirectOpen(false) }}
-          fullWidth
-          maxWidth="sm"
-          TransitionComponent={RedirectTransition}
-          disableEnforceFocus
-          disableScrollLock
-        >
-  <DialogTitle sx={{ fontWeight: 700 }}>
-    Continue to {redirectApp?.name}?
-  </DialogTitle>
-
-  <DialogContent dividers>
-    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 1 }}>
-      {/* Optional: show the app tile if you want */}
-      <Box
-        sx={{
-          width: 64,
-          height: 64,
-          borderRadius: 2,
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bgcolor: 'action.hover',
-          flexShrink: 0,
-        }}
-      >
-        {/* If you have MetanetApp, you can use it here instead of this box */}
-        {redirectDomain ? (
-          <img
-            src={`https://${redirectDomain}/favicon.ico`}
-            alt={`${redirectApp?.name} icon`}
-            style={{ maxWidth: '100%', maxHeight: '100%' }}
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-          />
-        ) : null}
-      </Box>
-
-      <Box sx={{ minWidth: 0 }}>
-        <Typography
-          sx={{
-            fontWeight: 700,
-            fontSize: '1.1rem',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {redirectApp?.name}
-        </Typography>
-
-        {redirectApp?.custom_message && (
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{
-              mt: 0.5,
-              display: '-webkit-box',
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}
-          >
-            {redirectApp.custom_message}
-          </Typography>
-        )}
-
-        {redirectDomain && (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-            {redirectDomain}
-          </Typography>
-        )}
-      </Box>
-    </Box>
-  </DialogContent>
-
-  <DialogActions sx={{ px: 3, py: 2 }}>
-    <Button onClick={() => { try { sessionStorage.removeItem('appinfo') } catch {}; setRedirectOpen(false) }} color="inherit">
-      Cancel
-    </Button>
-    <Button
-      onClick={handleRedirectContinue}
-      variant="contained"
-      endIcon={<OpenInNewIcon />}
-    >
-      Continue
-    </Button>
-  </DialogActions>
-</Dialog>
-      )}
       {currentView === 'list' && (
         <>
           <PageHeader

@@ -612,16 +612,37 @@ useEffect(() => {
             ) : (
               // no appInfo: MOVIE SLIDER (scroll-snap, auto-rotate, touch/trackpad friendly)
               <Box
-                sx={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center', minWidth: 0, zIndex: 0, pr: 6 /* space away from right column */ }}
-                onMouseEnter={() => setPausedBoth(true)}
-                onMouseLeave={() => setPausedBoth(false)}
-                onTouchStart={() => setPausedBoth(true)}
-                onTouchEnd={() => setTimeout(() => setPausedBoth(false), 1000)}
-                onFocusCapture={() => setPausedBoth(true)}
-                onBlurCapture={() => setPausedBoth(false)}
+              sx={{
+                height: '100%',
+                display: 'grid',
+                gridTemplateColumns: 'auto minmax(0,1fr) auto', // [left btn] [rail] [right btn]
+                alignItems: 'center',
+                columnGap: 1,
+                minWidth: 0,
+                zIndex: 0,
+              }}
+              onMouseEnter={() => setPausedBoth?.(true)}
+              onMouseLeave={() => setPausedBoth?.(false)}
+              onTouchStart={() => setPausedBoth?.(true)}
+              onTouchEnd={() => setTimeout(() => setPausedBoth?.(false), 800)}
+              onFocusCapture={() => setPausedBoth?.(true)}
+              onBlurCapture={() => setPausedBoth?.(false)}
+            >
+              {/* LEFT chevron (outside the rail) */}
+              <IconButton
+                size="small"
+                onClick={() => scrollByAmount('left')}
+                sx={{
+                  justifySelf: 'start',
+                  ml: -0.5,                       // optional outward nudge; remove if you want flush
+                  background: 'rgba(0,0,0,0.15)',
+                }}
               >
-                {/* Scrollable rail */}
-                <Box
+                <ChevronLeft />
+              </IconButton>
+
+              {/* Scrollable rail */}
+              <Box
                   ref={railRef}
                   sx={{
                     width: '100%',
@@ -683,23 +704,19 @@ useEffect(() => {
                         </Box>
                       ))}
                 </Box>
-
-                {/* Left/Right nudge buttons (kept inside the slider column; won't cover right button) */}
-                <IconButton
-                  size="small"
-                  onClick={() => scrollByAmount('left')}
-                  sx={{ position: 'absolute', left: 4, zIndex: 1, background: 'rgba(0,0,0,0.15)' }}
-                >
-                  <ChevronLeft />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  onClick={() => scrollByAmount('right')}
-                  sx={{ position: 'absolute', right: 4, zIndex: 1, background: 'rgba(0,0,0,0.15)' }}
-                >
-                  <ChevronRight />
-                </IconButton>
-              </Box>
+              {/* RIGHT chevron (outside the rail) */}
+              <IconButton
+                size="small"
+                onClick={() => scrollByAmount('right')}
+                sx={{
+                  justifySelf: 'end',
+                  mr: -0.5,                       // symmetric outward nudge
+                  background: 'rgba(0,0,0,0.15)',
+                }}
+              >
+                <ChevronRight />
+              </IconButton>
+            </Box>
             )}
 
             {/* RIGHT COLUMN: Clear (X) button when an app is selected */}
