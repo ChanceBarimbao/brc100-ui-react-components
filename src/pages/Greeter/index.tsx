@@ -91,20 +91,33 @@ const CodeForm = ({ code, setCode, loading, handleSubmitCode, handleResendCode, 
               ),
             }
           }}
-          sx={{ mb: 2 }}
+          sx={{ 
+            mb: 2   
+          }}
         />
         <Button
           variant='contained'
           type='submit'
           disabled={loading || code.length !== 6}
           fullWidth
-          sx={{ mt: 2, borderRadius: theme.shape.borderRadius, textTransform: 'none', py: 1.2 }}
+          sx={{ 
+            mt: 2,
+            borderRadius: theme.shape.borderRadius,
+            textTransform: 'none',
+            py: 1.2
+          }}
         >
           {loading ? <CircularProgress size={24} /> : 'Verify Code'}
         </Button>
       </form>
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-        <Button disabled={loading} onClick={handleResendCode} size="small" color="secondary" sx={{ textTransform: 'none' }}>
+        <Button
+          disabled={loading}
+          onClick={handleResendCode}
+          size="small"
+          color="secondary"
+          sx={{ textTransform: 'none' }}
+        >
           Resend Code
         </Button>
       </Box>
@@ -124,7 +137,9 @@ const PresentationKeyForm = ({ presentationKey, setPresentationKey, loading, han
         variant="outlined"
         fullWidth
         disabled={loading}
-        slotProps={{ input: { ref: presentationKeyFieldRef } }}
+        slotProps={{
+          input: { ref: presentationKeyFieldRef }
+        }}
         sx={{ mb: 2 }}
       />
       <Button
@@ -132,7 +147,12 @@ const PresentationKeyForm = ({ presentationKey, setPresentationKey, loading, han
         type='submit'
         disabled={loading || !presentationKey}
         fullWidth
-        sx={{ mt: 2, borderRadius: theme.shape.borderRadius, textTransform: 'none', py: 1.2 }}
+        sx={{
+          mt: 2,
+          borderRadius: theme.shape.borderRadius,
+          textTransform: 'none',
+          py: 1.2
+        }}
       >
         {loading ? <CircularProgress size={24} /> : 'Continue'}
       </Button>
@@ -157,14 +177,20 @@ const PasswordForm = ({ password, setPassword, confirmPassword, setConfirmPasswo
             ref: passwordFieldRef,
             endAdornment: (
               <InputAdornment position="end">
-                <IconButton aria-label="toggle password visibility" onClick={() => setShowPassword(!showPassword)} edge="end">
+                <IconButton
+                  aria-label="toggle password visibility"
+                  onClick={() => setShowPassword(!showPassword)}
+                  edge="end"
+                >
                   {showPassword ? <VisibilityOff /> : <Visibility />}
                 </IconButton>
               </InputAdornment>
             ),
           }
         }}
-        sx={{ mb: 2 }}
+        sx={{ 
+          mb: 2
+        }}
       />
 
       {accountStatus === 'new-user' && (
