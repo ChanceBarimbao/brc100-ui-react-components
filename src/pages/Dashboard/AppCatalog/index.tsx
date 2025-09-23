@@ -30,7 +30,7 @@ import { useHistory } from 'react-router-dom'
 import { Img } from '@bsv/uhrp-react'
 import PageHeader from '../../../components/PageHeader'
 import { openUrl } from '../../../utils/openUrl'
-
+import { toast } from 'react-toastify'
 import { AppCatalog as AppCatalogAPI } from 'metanet-apps'
 import type { PublishedApp } from 'metanet-apps/src/types'
 import CounterpartyChip from '../../../components/CounterpartyChip'
@@ -231,29 +231,22 @@ const AppCatalog: React.FC = () => {
   
   // continue handler
   const handleRedirectContinue = useCallback(() => {
-    if (!redirectApp?.Originator) {
-      setRedirectOpen(false)
-      try { sessionStorage.removeItem('appinfo') } catch {}
-      return
-    }
-    // Try to open synchronously to avoid popup blockers
-    try {
-      if (typeof window !== 'undefined' && typeof window.open === 'function') {
-        const win = window.open(redirectApp.Originator, '_blank', 'noopener,noreferrer')
-        if (!win) {
-          // Fallback if blocked or unavailable
-          openUrl(redirectApp.Originator)
-        }
-      } else {
-        // Non-browser or no window.open: use helper
-        openUrl(redirectApp.Originator)
-      }
-    } catch {
-      // Final fallback
-      openUrl(redirectApp.Originator)
-    }
+    const url = redirectApp?.Originator
+    // Close any open modals/dialogs immediately
     setRedirectOpen(false)
+    setOpenModal(false)
     try { sessionStorage.removeItem('appinfo') } catch {}
+
+    if (!url) return
+
+    // Defer opening the URL until after the dialog has unmounted to avoid any overlay/focus issues
+    setTimeout(() => {
+      try {
+        openUrl(url)
+      } catch {
+        toast.error('Failed to open app')
+      }
+    }, 0)
   }, [redirectApp])
   
   // optional: nice slide-up transition
@@ -270,14 +263,16 @@ const AppCatalog: React.FC = () => {
 
   return (
     <div className={classes.root}>
-      <Dialog
-  open={redirectOpen}
-  onClose={() => { try { sessionStorage.removeItem('appinfo') } catch {}; setRedirectOpen(false) }}
-  fullWidth
-  maxWidth="sm"
-  TransitionComponent={RedirectTransition}
-  keepMounted
->
+      {redirectOpen && (
+        <Dialog
+          open
+          onClose={() => { try { sessionStorage.removeItem('appinfo') } catch {}; setRedirectOpen(false) }}
+          fullWidth
+          maxWidth="sm"
+          TransitionComponent={RedirectTransition}
+          disableEnforceFocus
+          disableScrollLock
+        >
   <DialogTitle sx={{ fontWeight: 700 }}>
     Continue to {redirectApp?.name}?
   </DialogTitle>
@@ -360,6 +355,7 @@ const AppCatalog: React.FC = () => {
     </Button>
   </DialogActions>
 </Dialog>
+      )}
       {currentView === 'list' && (
         <>
           <PageHeader
